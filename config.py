@@ -1,0 +1,53 @@
+APP_TITLE = "Raja Weighbridge System"
+APP_GEOMETRY = "1250x760"
+
+COMPANY_NAME = "RAJA WEIGHT BRIDGE"
+COMPANY_ADDRESS = "Sarghoda Road Sadhar Bypass Al Shafi Ice Factory Faisalabad"
+COMPANY_PHONE = "03157097516"
+
+AUTHOR_BRAND = "SK Developers"
+AUTHOR_NAME = "Mian Salman"
+AUTHOR_CONTACT = "923008666716"
+AUTHOR_WEB = "https://skdevelopers.info"
+AUTHOR_GITHUB = "https://github.com/skdevelopers"
+
+DB_NAME = "weighbridge.db"
+
+# ===== STABILITY SETTINGS (VERY IMPORTANT FOR INDUSTRIAL SCALE) =====
+
+# how many readings to consider for stability
+STABLE_WINDOW_SIZE = 6
+
+# allowed fluctuation range (KG)
+STABLE_THRESHOLD = 3
+STABLE_TOLERANCE = 3
+# minimum stable readings required
+STABLE_MIN_COUNT = 3
+
+
+
+DEMO_MIN_WEIGHT = 1000
+DEMO_MAX_WEIGHT = 30000
+
+
+SERIAL_PORT = "COM1"
+BAUD_RATE = 9600
+SERIAL_TIMEOUT = 1
+AUTO_CAPTURE_ENABLED = False
+READ_INTERVAL_MS = 500
+DEMO_MODE = False
+
+PRINT_OUTPUT_DIR = "prints"
+RECEIPT_WIDTH = 1100
+RECEIPT_HEIGHT = 700
+RECEIPT_LOW_INK = True
+RECEIPT_SAVE_PNG = True
+RECEIPT_SAVE_PDF = True
+RECEIPT_AUTO_PRINT = False
+PAGE_WIDTH_IN = 8.27
+PAGE_HEIGHT_IN = 5.84
+
+PRINT_WIDTH_IN = 7.80
+PRINT_HEIGHT_IN = 5.30
+
+DPI = 200

@@ -1,0 +1,128 @@
+
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <meta charset="utf-8">
+
+    <style>
+    @page {
+        size: 8.27in 5.84in;
+        margin: 0;
+    }
+
+    body {
+        margin:0;
+        font-family: Arial;
+    }
+
+    .page {
+        width: 8.27in;
+        height: 5.84in;
+        display:flex;
+        justify-content:center;
+        align-items:center;
+    }
+
+    .ticket {
+        width: 7.8in;
+        height: 5.3in;
+        border:2px solid black;
+        padding:10px;
+    }
+
+    .center {
+        text-align:center;
+    }
+
+    .row {
+        display:flex;
+        justify-content:space-between;
+        margin-top:8px;
+    }
+
+    .box {
+        border:1px solid black;
+        padding:6px;
+        border-radius:6px;
+    }
+
+    .weight {
+        display:flex;
+        gap:10px;
+        margin-top:10px;
+    }
+
+    .weight div {
+        flex:1;
+        border:1px solid black;
+        padding:10px;
+        font-weight:bold;
+    }
+
+    .big {
+        font-size:20px;
+    }
+
+    .footer {
+        text-align:center;
+        margin-top:10px;
+        font-size:12px;
+    }
+
+    </style>
+
+    <script>
+    window.onload = function(){
+        setTimeout(()=>window.print(), 300);
+    }
+    </script>
+
+    </head>
+
+    <body>
+
+    <div class="page">
+    <div class="ticket">
+
+    <div class="center">
+    <b>RAJA WEIGHT BRIDGE</b><br>
+    Sarghoda Road Sadhar Bypass Al Shafi Ice Factory Faisalabad<br>
+    03157097516
+    </div>
+
+    <div class="row">
+    <div><b>Vehicle:</b> FDL 9999 18</div>
+    <div><b>SR:</b> WB-000010</div>
+    </div>
+
+    <div class="row">
+    <div><b>Date:</b> 2026-03-31</div>
+    <div><b>Time:</b> 20:28:46</div>
+    </div>
+
+    <div class="weight">
+    <div>1st: 15700 KG</div>
+    <div>2nd: 32400 KG</div>
+    <div class="big">Net: 16700 KG</div>
+    </div>
+
+    <div class="row">
+    <div><b>Material:</b> Chemical</div>
+    <div><b>Maunds:</b> 417-20</div>
+    </div>
+
+    <div class="row">
+    <div><b>Status:</b> Paid</div>
+    <div><b>Paid:</b> Rs 320.0</div>
+    </div>
+
+    <div class="footer">
+    SK Developers | Mian Salman | 923008666716
+    </div>
+
+    </div>
+    </div>
+
+    </body>
+    </html>
+    

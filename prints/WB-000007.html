@@ -1,0 +1,240 @@
+
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <meta charset="utf-8">
+
+    <style>
+    @page {
+        size: 8.27in 5.84in;
+        margin:0;
+    }
+
+    body {
+        margin:0;
+        font-family: Arial;
+    }
+
+    .page {
+        width:8.27in;
+        height:5.84in;
+        display:flex;
+        justify-content:center;
+        align-items:center;
+    }
+
+    .ticket {
+        width:7.8in;
+        height:5.3in;
+        border:2px solid black;
+        padding:10px;
+        box-sizing:border-box;
+    }
+
+    .header {
+        text-align:center;
+        font-weight:bold;
+        font-size:16px;
+    }
+
+    .customer {
+        display:flex;
+        margin-top:8px;
+    }
+
+    .customer-left {
+        width:65%;
+        border:1px solid black;
+        padding:6px;
+    }
+
+    .customer-right {
+        width:35%;
+        border:1px solid black;
+        margin-left:8px;
+    }
+
+    .grid {
+        display:flex;
+        margin-top:8px;
+    }
+
+    .left-panel {
+        width:65%;
+    }
+
+    .right-panel {
+        width:35%;
+        margin-left:8px;
+    }
+
+    .box {
+        border:1px solid black;
+        padding:6px;
+        margin:3px;
+    }
+
+    .row {
+        display:flex;
+    }
+
+    .small {
+        font-size:12px;
+    }
+
+    .weight {
+        display:flex;
+        margin-bottom:6px;
+    }
+
+    .weight-value {
+        flex:1;
+        border:1px solid black;
+        padding:8px;
+        font-weight:bold;
+    }
+
+    .weight-label {
+        width:120px;
+        background:#ddd;
+        border:1px solid black;
+        text-align:center;
+        padding:8px;
+        font-weight:bold;
+    }
+
+    .center {
+        text-align:center;
+    }
+
+    .footer {
+        margin-top:6px;
+        text-align:center;
+        font-size:11px;
+    }
+
+    </style>
+
+    <script>
+    window.onload = function(){
+        setTimeout(()=>window.print(),300);
+    }
+    </script>
+
+    </head>
+
+    <body>
+
+    <div class="page">
+    <div class="ticket">
+
+    <div class="header">
+    RAJA WEIGHT BRIDGE<br>
+    Sarghoda Road Sadhar Bypass Al Shafi Ice Factory Faisalabad<br>
+    03157097516
+    </div>
+
+    <!-- Customer -->
+    <div class="customer">
+    <div class="customer-left">
+    <b>Customer Name:</b> Mian Salman
+    </div>
+    <div class="customer-right"></div>
+    </div>
+
+    <div class="grid">
+
+    <!-- LEFT -->
+    <div class="left-panel">
+
+    <div class="box">
+
+    <div class="row">
+    <div class="box">Vehicle #</div>
+    <div class="box">SR #</div>
+    <div class="box">Date</div>
+    <div class="box">Time</div>
+    </div>
+
+    <div class="row small">
+    <div class="box">FDL 8970</div>
+    <div class="box">WB-000007</div>
+    <div class="box">2026-04-01</div>
+    <div class="box">01:11:56</div>
+    </div>
+
+    <div class="row small">
+    <div class="box"></div>
+    <div class="box"></div>
+    <div class="box"></div>
+    <div class="box"></div>
+    </div>
+
+    </div>
+
+    <div class="row">
+    <div class="box" style="flex:1">
+    <b>Description</b><br>
+    Chemical
+    </div>
+
+    <div class="box" style="width:160px">
+    <b>Mounds</b><br>
+    221-3
+    </div>
+    </div>
+
+    <div class="row">
+    <div class="box" style="width:100px">40 kg</div>
+    <div class="box" style="flex:1">221-3</div>
+    </div>
+
+    <div class="row">
+    <div class="box">1st Time</div>
+    <div class="box">WithOut Driver</div>
+    <div class="box">2nd Time</div>
+    <div class="box">WithOut Driver</div>
+    </div>
+
+    </div>
+
+    <!-- RIGHT -->
+    <div class="right-panel">
+
+    <div class="weight">
+    <div class="weight-value">25657 Kg</div>
+    <div class="weight-label">1st Weight</div>
+    </div>
+
+    <div class="weight">
+    <div class="weight-value">34500 Kg</div>
+    <div class="weight-label">2nd Weight</div>
+    </div>
+
+    <div class="weight">
+    <div class="weight-value">8843 Kg</div>
+    <div class="weight-label">Net Weight</div>
+    </div>
+
+    <div class="box center">
+    Received with Thanks
+    </div>
+
+    <div class="box center">
+    Rs 345.0 Paid
+    </div>
+
+    </div>
+
+    </div>
+
+    <div class="footer">
+    SK Developers | Mian Salman | 923008666716
+    </div>
+
+    </div>
+    </div>
+
+    </body>
+    </html>
+    

@@ -1,0 +1,184 @@
+
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <meta charset="utf-8">
+
+    <style>
+    @page {
+        size: 8.27in 5.84in;
+        margin:0;
+    }
+
+    body {
+        margin:0;
+        font-family: Arial;
+    }
+
+    .page {
+        width:8.27in;
+        height:5.84in;
+        display:flex;
+        justify-content:center;
+        align-items:center;
+    }
+
+    .ticket {
+        width:7.8in;
+        height:5.3in;
+        border:2px solid black;
+        padding:12px;
+    }
+
+    .header {
+        text-align:center;
+        font-weight:bold;
+    }
+
+    .customer {
+        display:flex;
+        margin-top:10px;
+    }
+
+    .customer-left {
+        width:65%;
+        border:1px solid black;
+        padding:8px;
+    }
+
+    .customer-right {
+        width:35%;
+        border:1px solid black;
+        margin-left:10px;
+    }
+
+    .row {
+        display:flex;
+        margin-top:8px;
+    }
+
+    .box {
+        border:1px solid black;
+        padding:6px;
+        border-radius:6px;
+        margin-right:6px;
+    }
+
+    .weights {
+        margin-top:10px;
+    }
+
+    .weight-row {
+        display:flex;
+        margin-top:6px;
+    }
+
+    .weight-value {
+        flex:1;
+        border:1px solid black;
+        padding:8px;
+        font-size:18px;
+        font-weight:bold;
+    }
+
+    .weight-label {
+        width:140px;
+        background:#ddd;
+        text-align:center;
+        padding:8px;
+        font-weight:bold;
+    }
+
+    .footer {
+        margin-top:10px;
+        text-align:center;
+        font-size:12px;
+    }
+
+    </style>
+
+    <script>
+    window.onload = function(){
+        setTimeout(()=>window.print(), 300);
+    }
+    </script>
+
+    </head>
+
+    <body>
+
+    <div class="page">
+    <div class="ticket">
+
+    <div class="header">
+    RAJA WEIGHT BRIDGE<br>
+    Sarghoda Road Sadhar Bypass Al Shafi Ice Factory Faisalabad<br>
+    03157097516
+    </div>
+
+    <div class="customer">
+    <div class="customer-left">
+    <b>Vehicle:</b> FDL 999 18<br>
+    <b>Date:</b> 2026-03-31
+    </div>
+    <div class="customer-right">
+    <b>SR:</b> WB-000014<br>
+    <b>Time:</b> 20:38:42
+    </div>
+    </div>
+
+    <div class="weights">
+
+    <div class="weight-row">
+    <div class="weight-value">12080 Kg</div>
+    <div class="weight-label">1st Weight</div>
+    </div>
+
+    <div class="weight-row">
+    <div class="weight-value">0 Kg</div>
+    <div class="weight-label">2nd Weight</div>
+    </div>
+
+    <div class="weight-row">
+    <div class="weight-value">0 Kg</div>
+    <div class="weight-label">Net Weight</div>
+    </div>
+
+    </div>
+
+    <div class="row">
+    <div class="box" style="flex:1">
+    <b>Description:</b> Chemical
+    </div>
+
+    <div class="box" style="width:200px">
+    <b>Maunds:</b> 0-0
+    </div>
+    </div>
+
+    <div class="row">
+    <div class="box" style="flex:1">
+    Received with Thanks
+    </div>
+    </div>
+
+    <div class="row">
+    <div class="box" style="flex:1">
+    <b>Status:</b> Paid
+    </div>
+
+    <div class="box" style="width:200px">
+    <b>Rs 670.0 Paid</b>
+    </div>
+    </div>
+
+    <div class="footer">
+    SK Developers | Mian Salman | 923008666716
+    </div>
+
+    </div>
+    </div>
+
+    </body>
+    </html>
+    

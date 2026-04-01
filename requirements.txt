@@ -1,0 +1,24 @@
+--no-index
+--find-links=libs
+
+# Core
+altgraph==0.17.5
+pefile==2024.8.26
+pywin32-ctypes==0.2.3
+pyserial==3.5
+
+# Build
+pyinstaller==5.13.2
+pyinstaller-hooks-contrib==2023.8
+
+# Imaging / Printing
+Pillow==9.5.0
+
+# Urdu Support
+arabic-reshaper==3.0.0
+python-bidi==0.4.2
+
+# Hidden deps (VERY IMPORTANT)
+importlib-metadata==6.8.0
+zipp==3.17.0
+six==1.16.0

@@ -1,521 +1,526 @@
 import os
-import subprocess
+import tempfile
 import webbrowser
-from pathlib import Path
-from typing import Dict, Any
-
+from typing import Any, Dict
+import tkinter as tk
 import config
 
 
 class PrinterService:
-    """
-    HTML-based industrial printing engine for weighbridge slips.
-
-    Features:
-    - HTML/CSS receipt rendering
-    - Save HTML before preview/print
-    - Silent print via Chrome when available
-    - Browser fallback for older systems
-    - Layout closely matching the physical weighbridge slip
-    """
-
     def __init__(self) -> None:
-        self.output_dir = Path(getattr(config, "PRINT_OUTPUT_DIR", "prints"))
-        self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.company_name = config.COMPANY_NAME
+        self.company_address = getattr(
+            config,
+            "COMPANY_ADDRESS",
+            "Sargodha Road Sadhar Bypass Al Shafi Ice Factory Faisalabad",
+        )
+        self.company_phone = config.COMPANY_PHONE
+        self.footer_line = f"{config.AUTHOR_BRAND} | {config.AUTHOR_NAME} | {config.AUTHOR_CONTACT}"
 
-    # =========================================================
-    # HELPERS
-    # =========================================================
-    @staticmethod
-    def _safe(value: Any) -> str:
-        return "" if value is None else str(value)
+        self.page_width_in = getattr(config, "PAGE_WIDTH_IN", 8.27)
+        self.page_height_in = getattr(config, "PAGE_HEIGHT_IN", 5.84)
 
-    @staticmethod
-    def _safe_int(value: Any) -> int:
+    def _value(self, payload: Dict[str, Any], key: str, default: Any = "") -> Any:
+        value = payload.get(key, default)
+        return default if value is None else value
+
+    def _safe_int(self, value: Any) -> int:
         try:
-            return abs(int(str(value).strip()))
+            return abs(int(float(str(value).strip())))
         except Exception:
             return 0
 
-    def _maund(self, kg: Any) -> str:
-        kg_int = self._safe_int(kg)
-        return f"{kg_int // 40}-{kg_int % 40}"
-
-    def _second_pass_exists(self, ticket: Dict[str, Any]) -> bool:
-        second_weight = ticket.get("second_weight", 0)
+    def _safe_float(self, value: Any) -> float:
         try:
-            return abs(int(second_weight)) > 0
+            return float(str(value).strip())
         except Exception:
-            return False
+            return 0.0
 
-    # =========================================================
-    # HTML TEMPLATE
-    # =========================================================
-    def _build_html(self, t: Dict[str, Any]) -> str:
-        second_exists = self._second_pass_exists(t)
+    def _format_amount(self, value: Any) -> str:
+        amount = self._safe_float(value)
+        if amount.is_integer():
+            return str(int(amount))
+        return f"{amount:.2f}"
 
-        second_date = self._safe(t.get("second_date")) if second_exists else ""
-        second_time = self._safe(t.get("second_time")) if second_exists else ""
-        second_mode = self._safe(t.get("second_mode")) if second_exists else ""
+    def _format_weight(self, value: Any) -> str:
+        weight = self._safe_int(value)
+        return f"{weight} Kg" if weight > 0 else ""
 
-        customer_name = self._safe(t.get("customer_name"))
-        vehicle_no = self._safe(t.get("vehicle_no"))
-        sr_no = self._safe(t.get("sr_no"))
-        first_date = self._safe(t.get("ticket_date"))
-        first_time = self._safe(t.get("ticket_time"))
-        material_name = self._safe(t.get("material_name"))
-        first_weight = self._safe(t.get("first_weight"))
-        second_weight = self._safe(t.get("second_weight"))
-        net_weight = self._safe(t.get("net_weight"))
-        paid_amount = self._safe(t.get("paid_amount") or "0")
-        first_mode = self._safe(t.get("first_mode") or "WithOut Driver")
-        payment_status = self._safe(t.get("payment_status"))
+    def _kg_to_maund_string(self, kg_value: Any) -> str:
+        kg = self._safe_int(kg_value)
+        if kg <= 0:
+            return ""
+        maunds = kg // 40
+        remainder_kg = kg % 40
+        return f"{maunds}-{remainder_kg}"
 
-        return f"""
-<!DOCTYPE html>
+    def _escape(self, value: Any) -> str:
+        text = str(value if value is not None else "")
+        return (
+            text.replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+        )
+
+    def _normalize_payload(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        first_weight = self._safe_int(self._value(payload, "first_weight", 0))
+        second_weight = self._safe_int(self._value(payload, "second_weight", 0))
+        raw_net_weight = self._safe_int(self._value(payload, "net_weight", 0))
+        has_second_pass = second_weight > 0
+
+        if has_second_pass:
+            net_weight = raw_net_weight if raw_net_weight > 0 else abs(first_weight - second_weight)
+            maund_source_weight = net_weight
+        else:
+            net_weight = 0
+            maund_source_weight = first_weight
+
+        first_date = str(self._value(payload, "first_date", self._value(payload, "ticket_date", "")))
+        first_time = str(self._value(payload, "first_time", self._value(payload, "ticket_time", "")))
+        second_date = str(self._value(payload, "second_date", ""))
+        second_time = str(self._value(payload, "second_time", ""))
+
+        customer_name = str(self._value(payload, "customer_name", ""))
+        material_name = str(self._value(payload, "material_name", ""))
+        vehicle_no = str(self._value(payload, "vehicle_no", ""))
+        sr_no = str(self._value(payload, "sr_no", ""))
+        slip_no = str(self._value(payload, "slip_no", self._value(payload, "id", "")))
+        remarks = str(self._value(payload, "remarks", ""))
+
+        paid_amount = self._safe_float(self._value(payload, "paid_amount", 0))
+        first_mode = str(self._value(payload, "first_mode", "WithOut Driver")) or "WithOut Driver"
+        second_mode = str(self._value(payload, "second_mode", ""))
+        if has_second_pass and not second_mode:
+            second_mode = "WithOut Driver"
+
+        description = material_name if material_name else remarks
+
+        return {
+            "customer_name": customer_name,
+            "description": description,
+            "vehicle_no": vehicle_no,
+            "sr_no": sr_no,
+            "slip_no": slip_no,
+            "first_date": first_date,
+            "first_time": first_time,
+            "second_date": second_date if has_second_pass else "",
+            "second_time": second_time if has_second_pass else "",
+            "first_weight_text": self._format_weight(first_weight),
+            "second_weight_text": self._format_weight(second_weight) if has_second_pass else "",
+            "net_weight_text": self._format_weight(net_weight) if has_second_pass else "",
+            "maunds_text": self._kg_to_maund_string(maund_source_weight),
+            "paid_amount_text": self._format_amount(paid_amount),
+            "first_mode": first_mode,
+            "second_mode": second_mode if has_second_pass else "",
+            "show_second_pass": has_second_pass,
+        }
+
+    def _build_html(self, payload: Dict[str, Any], auto_print: bool = False) -> str:
+        data = self._normalize_payload(payload)
+        print_script = "window.onload = function(){ window.print(); };" if auto_print else ""
+
+        second_date_block = self._escape(data["second_date"]) if data["show_second_pass"] else ""
+        second_time_block = self._escape(data["second_time"]) if data["show_second_pass"] else ""
+        second_weight_block = self._escape(data["second_weight_text"]) if data["show_second_pass"] else ""
+        second_mode_block = self._escape(data["second_mode"]) if data["show_second_pass"] else ""
+
+        return f"""<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
-<title>Slip {sr_no}</title>
-
+<title>Weighbridge Ticket - {self._escape(data["sr_no"])}</title>
 <style>
-@page {{
-    size: 8.27in 5.84in;
-    margin: 0;
-}}
+    @page {{
+        size: {self.page_width_in}in {self.page_height_in}in;
+        margin: 0.04in;
+    }}
 
-* {{
-    box-sizing: border-box;
-}}
+    html, body {{
+        margin: 0;
+        padding: 0;
+        background: #dcdcdc;
+        font-family: Arial, Helvetica, sans-serif;
+    }}
 
-body {{
-    margin: 0;
-    padding: 0;
-    font-family: Arial, Helvetica, sans-serif;
-    background: #ffffff;
-    color: #000000;
-}}
-
-.page {{
-    width: 8.27in;
-    height: 5.84in;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}}
-
-.ticket {{
-    width: 7.80in;
-    min-height: 5.30in;
-    border: 2px solid #000;
-    padding: 8px 10px 6px 10px;
-}}
-
-.header {{
-    text-align: center;
-    line-height: 1.15;
-    margin-bottom: 6px;
-}}
-
-.header .title {{
-    font-size: 16px;
-    font-weight: 700;
-    letter-spacing: 0.2px;
-}}
-
-.header .subtitle {{
-    font-size: 11px;
-    font-weight: 700;
-    margin-top: 2px;
-}}
-
-.customer-row {{
-    display: flex;
-    gap: 6px;
-    margin-bottom: 6px;
-}}
-
-.customer-left,
-.customer-right {{
-    border: 1px solid #000;
-    min-height: 36px;
-    display: flex;
-    align-items: center;
-    padding: 0;
-}}
-
-.customer-left {{
-    width: 66%;
-}}
-
-.customer-right {{
-    width: 34%;
-}}
-
-.label-chip {{
-    background: #d9d9d9;
-    border-right: 1px solid #000;
-    font-weight: 700;
-    min-width: 150px;
-    padding: 8px 10px;
-    height: 100%;
-    display: flex;
-    align-items: center;
-}}
-
-.label-value {{
-    padding: 8px 10px;
-    flex: 1;
-}}
-
-.main-grid {{
-    display: flex;
-    gap: 8px;
-}}
-
-.left-panel {{
-    width: 66%;
-}}
-
-.right-panel {{
-    width: 34%;
-}}
-
-.block {{
-    border: 1px solid #000;
-    border-radius: 16px;
-    padding: 8px;
-    margin-bottom: 7px;
-}}
-
-.row {{
-    display: flex;
-    gap: 6px;
-    align-items: stretch;
-}}
-
-.cell {{
-    border: 1px solid #000;
-    padding: 6px 8px;
-    min-height: 34px;
-    display: flex;
-    align-items: center;
-}}
-
-.head-cell {{
-    justify-content: center;
-    font-weight: 700;
-    background: #f7f7f7;
-}}
-
-.value-cell {{
-    font-size: 12px;
-}}
-
-.w-vehicle {{ width: 19%; }}
-.w-sr      {{ width: 13%; }}
-.w-date    {{ width: 24%; }}
-.w-time    {{ width: 24%; }}
-
-.desc-row {{
-    display: flex;
-    gap: 6px;
-    margin-bottom: 6px;
-}}
-
-.desc-box {{
-    border: 1px solid #000;
-    min-height: 60px;
-    padding: 6px 8px;
-}}
-
-.desc-left {{
-    width: 62%;
-}}
-
-.desc-right {{
-    width: 38%;
-}}
-
-.desc-title {{
-    font-weight: 700;
-    margin-bottom: 4px;
-}}
-
-.small-row {{
-    display: flex;
-    gap: 6px;
-    margin-bottom: 6px;
-}}
-
-.kg40 {{
-    width: 25%;
-    border: 1px solid #000;
-    padding: 8px 10px;
-    min-height: 40px;
-    display: flex;
-    align-items: center;
-}}
-
-.maund-box {{
-    width: 75%;
-    border: 1px solid #000;
-    padding: 8px 10px;
-    min-height: 40px;
-    display: flex;
-    align-items: center;
-}}
-
-.mode-row {{
-    display: flex;
-    gap: 6px;
-}}
-
-.mode-label,
-.mode-value {{
-    border: 1px solid #000;
-    min-height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 6px 8px;
-}}
-
-.mode-label {{
-    width: 16%;
-    font-weight: 700;
-    background: #d9d9d9;
-}}
-
-.mode-value {{
-    width: 34%;
-}}
-
-.weight-row {{
-    display: flex;
-    margin-bottom: 6px;
-}}
-
-.weight-value {{
-    flex: 1;
-    border: 1px solid #000;
-    min-height: 45px;
-    padding: 8px 10px;
-    font-size: 16px;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-}}
-
-.weight-label {{
-    width: 120px;
-    border: 1px solid #000;
-    border-left: none;
-    background: #d9d9d9;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 8px 6px;
-}}
-
-.thanks-box,
-.paid-box {{
-    border: 1px solid #000;
-    min-height: 42px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    margin-bottom: 6px;
-    padding: 8px;
-    font-weight: 700;
-}}
-
-.footer {{
-    text-align: center;
-    font-size: 10px;
-    margin-top: 8px;
-}}
-
-.hidden-second {{
-    visibility: hidden;
-}}
-
-.print-note {{
-    display: none;
-}}
-
-@media screen {{
     body {{
-        background: #f3f3f3;
+        width: 100%;
     }}
 
-    .page {{
+    .sheet {{
+        width: calc({self.page_width_in}in - 0.08in);
+        min-height: calc({self.page_height_in}in - 0.08in);
         margin: 0 auto;
+        border: 1.2px solid #222;
+        padding: 0.032in;
+        box-sizing: border-box;
+        background: #dcdcdc;
     }}
-}}
+
+    .header {{
+        text-align: center;
+        line-height: 1.0;
+        margin-bottom: 0.025in;
+    }}
+
+    .header .title {{
+        font-size: 0.25in;
+        font-weight: 900;
+        letter-spacing: 0.01in;
+    }}
+
+    .header .sub {{
+        font-size: 0.145in;
+        font-weight: 700;
+        margin-top: 0.01in;
+    }}
+
+    .header .phone {{
+        font-size: 0.14in;
+        font-weight: 700;
+    }}
+
+    .top-meta {{
+        display: grid;
+        grid-template-columns: 1fr 1.10in;
+        gap: 0.025in;
+        margin-bottom: 0.025in;
+    }}
+
+    .slip-box {{
+        border: 1px solid #222;
+        min-height: 0.27in;
+        padding: 0.02in 0.05in;
+        font-size: 0.145in;
+        font-weight: 800;
+        background: #dcdcdc;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }}
+
+    .customer-row {{
+        display: grid;
+        grid-template-columns: 1.38in 1fr;
+        gap: 0.025in;
+        margin-bottom: 0.025in;
+    }}
+
+    .label-box,
+    .value-box,
+    .small-head,
+    .small-value,
+    .weight-value,
+    .weight-label,
+    .thanks-box,
+    .desc-box,
+    .maund-box,
+    .mini-box,
+    .paid-box {{
+        border: 1px solid #222;
+        box-sizing: border-box;
+        background: #dcdcdc;
+    }}
+
+    .label-box {{
+        padding: 0.04in 0.07in;
+        font-size: 0.145in;
+        font-weight: 800;
+        min-height: 0.31in;
+        display: flex;
+        align-items: center;
+    }}
+
+    .value-box {{
+        padding: 0.04in 0.07in;
+        font-size: 0.14in;
+        min-height: 0.31in;
+        display: flex;
+        align-items: center;
+    }}
+
+    .main-grid {{
+        display: grid;
+        grid-template-columns: 64% 36%;
+        gap: 0.025in;
+        margin-bottom: 0.025in;
+    }}
+
+    .left-top {{
+        border: 1.1px solid #222;
+        border-radius: 0.16in;
+        padding: 0.035in;
+        background: #dcdcdc;
+        min-height: 1.46in;
+    }}
+
+    .ticket-grid-head,
+    .ticket-grid-values,
+    .ticket-grid-values-2 {{
+        display: grid;
+        grid-template-columns: 20% 13% 31% 36%;
+        gap: 0.025in;
+        margin-bottom: 0.025in;
+    }}
+
+    .small-head {{
+        text-align: center;
+        font-size: 0.14in;
+        font-weight: 800;
+        padding: 0.035in 0.03in;
+        min-height: 0.26in;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }}
+
+    .small-value {{
+        font-size: 0.14in;
+        padding: 0.04in 0.055in;
+        min-height: 0.34in;
+        display: flex;
+        align-items: center;
+        overflow: hidden;
+        word-break: break-word;
+    }}
+
+    .right-weights {{
+        display: grid;
+        grid-template-rows: repeat(4, auto);
+        gap: 0.025in;
+    }}
+
+    .weight-row {{
+        display: grid;
+        grid-template-columns: 1fr 1.43in;
+    }}
+
+    .weight-value {{
+        min-height: 0.40in;
+        display: flex;
+        align-items: center;
+        padding: 0 0.075in;
+        font-size: 0.17in;
+        font-weight: 700;
+    }}
+
+    .weight-label {{
+        min-height: 0.40in;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.17in;
+        font-weight: 800;
+    }}
+
+    .thanks-box {{
+        min-height: 0.42in;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.15in;
+        font-weight: 700;
+    }}
+
+    .bottom-grid {{
+        display: grid;
+        grid-template-columns: 64% 36%;
+        gap: 0.025in;
+        margin-bottom: 0.025in;
+    }}
+
+    .desc-maund {{
+        display: grid;
+        grid-template-columns: 62% 38%;
+        gap: 0.025in;
+    }}
+
+    .desc-box, .maund-box {{
+        min-height: 0.68in;
+        padding: 0.045in 0.07in;
+    }}
+
+    .box-title {{
+        font-size: 0.145in;
+        font-weight: 800;
+        margin-bottom: 0.025in;
+    }}
+
+    .box-value {{
+        font-size: 0.14in;
+    }}
+
+    .paid-box {{
+        min-height: 0.44in;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.19in;
+        font-weight: 900;
+    }}
+
+    .kg-maund-row {{
+        display: grid;
+        grid-template-columns: 24% 1fr;
+        gap: 0.025in;
+        margin-top: 0.025in;
+    }}
+
+    .mini-box {{
+        min-height: 0.34in;
+        padding: 0.035in 0.075in;
+        font-size: 0.145in;
+        display: flex;
+        align-items: center;
+        box-sizing: border-box;
+    }}
+
+    .time-mode-row {{
+        display: grid;
+        grid-template-columns: 16% 35% 16% 33%;
+        gap: 0.025in;
+        margin-top: 0.025in;
+    }}
+
+    .time-label {{
+        font-weight: 800;
+    }}
+
+    .foot {{
+        text-align: center;
+        font-size: 0.115in;
+        margin-top: 0.025in;
+    }}
+
+    @media print {{
+        html, body {{
+            background: white;
+        }}
+
+        .sheet {{
+            margin: 0 auto;
+            background: white;
+        }}
+    }}
 </style>
-
 <script>
-window.onload = function() {{
-    setTimeout(function() {{
-        window.print();
-    }}, 300);
-}};
+{print_script}
 </script>
-
 </head>
-
 <body>
-<div class="page">
-    <div class="ticket">
-
+    <div class="sheet">
         <div class="header">
-            <div class="title">{config.COMPANY_NAME}</div>
-            <div class="subtitle">{config.COMPANY_ADDRESS}</div>
-            <div class="subtitle">{config.COMPANY_PHONE}</div>
+            <div class="title">{self._escape(self.company_name)}</div>
+            <div class="sub">{self._escape(self.company_address)}</div>
+            <div class="phone">{self._escape(self.company_phone)}</div>
+        </div>
+
+        <div class="top-meta">
+            <div></div>
+            <div class="slip-box">Slip No: {self._escape(data["slip_no"])}</div>
         </div>
 
         <div class="customer-row">
-            <div class="customer-left">
-                <div class="label-chip">Customer Name:</div>
-                <div class="label-value">{customer_name}</div>
-            </div>
-            <div class="customer-right"></div>
+            <div class="label-box">Customer Name:</div>
+            <div class="value-box">{self._escape(data["customer_name"])}</div>
         </div>
 
         <div class="main-grid">
-
-            <div class="left-panel">
-
-                <div class="block">
-                    <div class="row">
-                        <div class="cell head-cell w-vehicle">Vehicle #</div>
-                        <div class="cell head-cell w-sr">SR #</div>
-                        <div class="cell head-cell w-date">Date</div>
-                        <div class="cell head-cell w-time">Time</div>
-                    </div>
-
-                    <div class="row" style="margin-top: 4px;">
-                        <div class="cell value-cell w-vehicle">{vehicle_no}</div>
-                        <div class="cell value-cell w-sr">{sr_no}</div>
-                        <div class="cell value-cell w-date">{first_date}</div>
-                        <div class="cell value-cell w-time">{first_time}</div>
-                    </div>
-
-                    <div class="row" style="margin-top: 4px;">
-                        <div class="cell value-cell w-vehicle {'hidden-second' if not second_exists else ''}"></div>
-                        <div class="cell value-cell w-sr {'hidden-second' if not second_exists else ''}"></div>
-                        <div class="cell value-cell w-date">{second_date}</div>
-                        <div class="cell value-cell w-time">{second_time}</div>
-                    </div>
+            <div class="left-top">
+                <div class="ticket-grid-head">
+                    <div class="small-head">Vehicle #</div>
+                    <div class="small-head">SR #</div>
+                    <div class="small-head">Date</div>
+                    <div class="small-head">Time</div>
                 </div>
 
-                <div class="desc-row">
-                    <div class="desc-box desc-left">
-                        <div class="desc-title">Description</div>
-                        <div>{material_name}</div>
-                    </div>
-                    <div class="desc-box desc-right">
-                        <div class="desc-title">Mounds</div>
-                        <div>{self._maund(net_weight)}</div>
-                    </div>
+                <div class="ticket-grid-values">
+                    <div class="small-value">{self._escape(data["vehicle_no"])}</div>
+                    <div class="small-value">{self._escape(data["sr_no"])}</div>
+                    <div class="small-value">{self._escape(data["first_date"])}</div>
+                    <div class="small-value">{self._escape(data["first_time"])}</div>
                 </div>
 
-                <div class="small-row">
-                    <div class="kg40">40 kg</div>
-                    <div class="maund-box">{self._maund(net_weight)}</div>
+                <div class="ticket-grid-values-2">
+                    <div class="small-value"></div>
+                    <div class="small-value"></div>
+                    <div class="small-value">{second_date_block}</div>
+                    <div class="small-value">{second_time_block}</div>
                 </div>
-
-                <div class="mode-row">
-                    <div class="mode-label">1st Time</div>
-                    <div class="mode-value">{first_mode}</div>
-                    <div class="mode-label">2nd Time</div>
-                    <div class="mode-value">{second_mode}</div>
-                </div>
-
             </div>
 
-            <div class="right-panel">
-
+            <div class="right-weights">
                 <div class="weight-row">
-                    <div class="weight-value">{first_weight} Kg</div>
+                    <div class="weight-value">{self._escape(data["first_weight_text"])}</div>
                     <div class="weight-label">1st Weight</div>
                 </div>
 
                 <div class="weight-row">
-                    <div class="weight-value">{second_weight if second_exists else ""}{" Kg" if second_exists else ""}</div>
+                    <div class="weight-value">{second_weight_block}</div>
                     <div class="weight-label">2nd Weight</div>
                 </div>
 
                 <div class="weight-row">
-                    <div class="weight-value">{net_weight if second_exists else ""}{" Kg" if second_exists else ""}</div>
+                    <div class="weight-value">{self._escape(data["net_weight_text"])}</div>
                     <div class="weight-label">Net Weight</div>
                 </div>
 
                 <div class="thanks-box">Received with Thanks</div>
-                <div class="paid-box">Rs {paid_amount} Paid</div>
+            </div>
+        </div>
 
+        <div class="bottom-grid">
+            <div>
+                <div class="desc-maund">
+                    <div class="desc-box">
+                        <div class="box-title">Description</div>
+                        <div class="box-value">{self._escape(data["description"])}</div>
+                    </div>
+
+                    <div class="maund-box">
+                        <div class="box-title">Mounds</div>
+                        <div class="box-value">{self._escape(data["maunds_text"])}</div>
+                    </div>
+                </div>
+
+                <div class="kg-maund-row">
+                    <div class="mini-box">40 kg</div>
+                    <div class="mini-box">{self._escape(data["maunds_text"])}</div>
+                </div>
+
+                <div class="time-mode-row">
+                    <div class="mini-box time-label">1st Time</div>
+                    <div class="mini-box">{self._escape(data["first_mode"])}</div>
+                    <div class="mini-box time-label">2nd Time</div>
+                    <div class="mini-box">{second_mode_block}</div>
+                </div>
             </div>
 
+            <div>
+                <div class="paid-box">Rs {self._escape(data["paid_amount_text"])} Paid</div>
+            </div>
         </div>
 
-        <div class="footer">
-            {config.AUTHOR_BRAND} | {config.AUTHOR_NAME} | {config.AUTHOR_CONTACT}
-        </div>
-
+        <div class="foot">{self._escape(self.footer_line)}</div>
     </div>
-</div>
 </body>
 </html>
 """
 
-    # =========================================================
-    # SAVE
-    # =========================================================
-    def save_html(self, ticket: Dict[str, Any]) -> str:
-        sr = ticket.get("sr_no") or "WB"
-        file_path = self.output_dir / f"{sr}.html"
+    def _write_html_file(self, html: str, prefix: str = "ticket_") -> str:
+        fd, filepath = tempfile.mkstemp(prefix=prefix, suffix=".html")
+        with os.fdopen(fd, "w", encoding="utf-8") as file:
+            file.write(html)
+        return filepath
 
-        with open(file_path, "w", encoding="utf-8") as f:
-            f.write(self._build_html(ticket))
+    def preview_ticket(self, root: tk.Tk, payload: Dict[str, Any]) -> str:
+        html = self._build_html(payload, auto_print=False)
+        filepath = self._write_html_file(html, prefix="ticket_preview_")
+        webbrowser.open(f"file://{os.path.abspath(filepath)}")
+        return filepath
 
-        return str(file_path)
-
-    # =========================================================
-    # PREVIEW
-    # =========================================================
-    def preview_ticket(self, parent, ticket: Dict[str, Any]) -> None:
-        path = self.save_html(ticket)
-        webbrowser.open(path)
-
-    # =========================================================
-    # PRINT
-    # =========================================================
-    def print_ticket(self, ticket: Dict[str, Any]) -> str:
-        path = self.save_html(ticket)
-
-        try:
-            chrome_paths = [
-                r"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-                r"C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
-            ]
-
-            for chrome in chrome_paths:
-                if os.path.exists(chrome):
-                    subprocess.Popen([
-                        chrome,
-                        "--kiosk",
-                        "--kiosk-printing",
-                        path
-                    ])
-                    return path
-
-            webbrowser.open(path)
-
-        except Exception:
-            webbrowser.open(path)
-
-        return path
+    def print_ticket(self, payload: Dict[str, Any]) -> str:
+        html = self._build_html(payload, auto_print=True)
+        filepath = self._write_html_file(html, prefix="ticket_print_")
+        webbrowser.open(f"file://{os.path.abspath(filepath)}")
+        return filepath
